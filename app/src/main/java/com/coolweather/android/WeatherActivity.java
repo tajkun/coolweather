@@ -48,9 +48,9 @@ public class WeatherActivity extends AppCompatActivity {
 
     private LinearLayout forecastLayout;
 
-    private TextView aqiText;
+    private TextView uvIndextText;
 
-    private TextView pm25Text;
+    private TextView humText;
 
     private TextView comfortText;
 
@@ -82,8 +82,8 @@ public class WeatherActivity extends AppCompatActivity {
         degreeText = (TextView)findViewById(R.id.degree_text);
         weatherInfoText = (TextView)findViewById(R.id.weather_info_text);
         forecastLayout = (LinearLayout) findViewById(R.id.forecast_layout);
-        aqiText = (TextView)findViewById(R.id.api_text);
-        pm25Text = (TextView)findViewById(R.id.pm25_text);
+        uvIndextText = (TextView)findViewById(R.id.api_text);
+        humText = (TextView)findViewById(R.id.pm25_text);
         comfortText = (TextView)findViewById(R.id.comfort_text);
         carWashText = (TextView)findViewById(R.id.car_cash_text);
         sportText = (TextView)findViewById(R.id.sport_text);
@@ -94,23 +94,25 @@ public class WeatherActivity extends AppCompatActivity {
         navButton = (Button) findViewById(R.id.nav_button);
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString = prefs.getString("weather",null);
-        final String weatherId;
+        final String location;
         if (weatherString != null){
             //有缓存时直接解析天气数据
             Weather weather = Utility.handWeatherResponse(weatherString);
-            weatherId = weather.basic.weatherId;
+            Log.e("111", "onCreate: 555555555" );
+            location = weather.basic.location;
+            Log.e("WeatherActivity", "onCreate: location="+location );
             showWeatherInfo(weather);
         } else {
             //无缓存时区服务器查询天气
-            weatherId = getIntent().getStringExtra("weather_id");
+            location = getIntent().getStringExtra("weather_id");
             weatherLayout.setVisibility(View.INVISIBLE);
-            requestWeather(weatherId);
+            requestWeather(location);
         }
 
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                requestWeather(weatherId);
+                requestWeather(location);
             }
         });
         String bingPic = prefs.getString("bing_pic",null);
@@ -131,8 +133,9 @@ public class WeatherActivity extends AppCompatActivity {
     /**
      * 根据天气id请求天气信息
      */
-    public void requestWeather(final String weatherId){
-        String weatherUrl = "http://guolin.tech/api/weather?cityid="+weatherId+"&key=8b143b376ca04cd0878c1c2fbef08122";
+    public void requestWeather(final String location){
+        String weatherUrl = "https://free-api.heweather.net/s6/weather?location="+location+"&key=5c3e7d90b45042f696cca60a0389ed5b";
+        Log.e("111", "requestWeather: "+weatherUrl );
         HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
@@ -151,6 +154,7 @@ public class WeatherActivity extends AppCompatActivity {
             public void onResponse(Call call, Response response) throws IOException {
                 final String responseText = response.body().string();
                 final Weather weather = Utility.handWeatherResponse(responseText);
+                Log.e("111", "onResponse: "+weather );
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -174,10 +178,10 @@ public class WeatherActivity extends AppCompatActivity {
      * 处理并展示Weather实体类中的数据
      */
     private void showWeatherInfo(Weather weather){
-        String cityName = weather.basic.cityName;
-        String updateTime = weather.basic.update.updateTime.split(" ")[1];
-        String degree = weather.now.temperature+"℃";
-        String weatherInfo = weather.now.more.info;
+        String cityName = weather.basic.location;
+        String updateTime = weather.update.loc.split(" ")[1];
+        String degree = weather.now.tmp+"℃";
+        String weatherInfo = weather.now.condTxt;
         titleCity.setText(cityName);
         titleUpdateTime.setText(updateTime);
         weatherInfoText.setText(weatherInfo);
@@ -189,19 +193,19 @@ public class WeatherActivity extends AppCompatActivity {
             TextView infoText = (TextView)view.findViewById(R.id.info_text);
             TextView maxText = (TextView)view.findViewById(R.id.max_text);
             TextView minText = (TextView)view.findViewById(R.id.min_text);
-            dateText.setText(forecast.data);
-            infoText.setText(forecast.more.info);
-            maxText.setText(forecast.temperature.max);
-            minText.setText(forecast.temperature.min);
+            dateText.setText(forecast.date);
+            infoText.setText(forecast.condTxtDaily);
+            maxText.setText(forecast.tmpMax);
+            minText.setText(forecast.tmpMin);
             forecastLayout.addView(view);
         }
-        if (weather.api != null) {
-            aqiText.setText(weather.api.city.api);
-            pm25Text.setText(weather.api.city.pm25);
+        if (weather.forecastList.get(0) != null) {
+            uvIndextText.setText(weather.forecastList.get(0).uvIndex);
+            humText.setText(weather.forecastList.get(0).hum);
         }
-        String comfort = "舒适度："+weather.suggestion.comfor.info;
-        String carWash = "洗车指数："+weather.suggestion.carWash.info;
-        String sport = "运动建议："+weather.suggestion.sport.info;
+        String comfort = "舒适度："+weather.lifeStyleList.get(0).txt;
+        String carWash = "穿衣指数："+weather.lifeStyleList.get(1).txt;
+        String sport = "紫外线指数："+weather.lifeStyleList.get(5).txt;
         comfortText.setText(comfort);
         carWashText.setText(carWash);
         sportText.setText(sport);
